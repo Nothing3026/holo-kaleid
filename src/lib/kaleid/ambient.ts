@@ -38,6 +38,7 @@ class AmbientPad {
   private master: GainNode | null = null;
   private voices: OscillatorNode[] = [];
   private voiceGains: GainNode[] = [];
+  private upper: { osc: OscillatorNode; src: number }[] = [];
   private filter: BiquadFilterNode | null = null;
   private noise: AudioBufferSourceNode | null = null;
   private lfo: OscillatorNode | null = null;
@@ -71,6 +72,16 @@ class AmbientPad {
   async start() {
     if (typeof window === "undefined") return;
     this.wanted = true;
+    // iOS treats Web Audio as an "ambient" sound that the silent switch
+    // mutes unless the page asks for media playback (iOS 16.4+).
+    try {
+      const nav = navigator as Navigator & {
+        audioSession?: { type: string };
+      };
+      if (nav.audioSession) nav.audioSession.type = "playback";
+    } catch {
+      /* older browsers: nothing to set */
+    }
     if (!this.ctx) {
       this.ctx = new AudioContext();
       this.ctx.addEventListener("statechange", () => this.emit());
@@ -159,6 +170,26 @@ class AmbientPad {
       this.voices.push(osc);
       this.voiceGains.push(g);
     }
+    // Phone speakers cannot reproduce the pad's low fundamentals
+    // (73-330Hz), so on a phone the pad is physically inaudible even
+    // though it is playing. Add a soft layer one octave up
+    // (220-880Hz) that small speakers can actually reproduce.
+    const upperSrc = [1, 2, 3];
+    const upperGains = [0.05, 0.04, 0.028];
+    upperSrc.forEach((src, j) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      const pan = ctx.createStereoPanner();
+      osc.type = "sine";
+      osc.frequency.value = (chord[src] ?? 110) * 2;
+      g.gain.value = upperGains[j] ?? 0.04;
+      pan.pan.value = (pans[src] ?? 0) * 0.7;
+      osc.connect(g);
+      g.connect(pan);
+      pan.connect(filter);
+      osc.start();
+      this.upper.push({ osc, src });
+    });
     const noise = ctx.createBufferSource();
     noise.buffer = brownNoise(ctx);
     noise.loop = true;
@@ -204,6 +235,12 @@ class AmbientPad {
     const t = this.ctx.currentTime;
     this.voices.forEach((osc, i) => {
       const freq = chord[i] ?? chord[0] ?? 110;
+      osc.frequency.cancelScheduledValues(t);
+      osc.frequency.setValueAtTime(osc.frequency.value, t);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq), t + GLIDE_SECS);
+    });
+    this.upper.forEach(({ osc, src }) => {
+      const freq = (chord[src] ?? chord[0] ?? 110) * 2;
       osc.frequency.cancelScheduledValues(t);
       osc.frequency.setValueAtTime(osc.frequency.value, t);
       osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq), t + GLIDE_SECS);
