@@ -1,0 +1,89 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0b1018;
+  --color-surface: #11131a;
+  --color-surface-2: #181b24;
+  --color-fg: #eef1f4;
+  --color-muted: #8b929c;
+  --color-subtle: #5c636d;
+  --color-accent: #d7dde4;
+  --color-accent-fg: #0a0b0e;
+  --color-border: rgb(255 255 255 / 0.1);
+  --color-border-strong: rgb(255 255 255 / 0.18);
+  --color-holo: #7ec8d4;
+  --color-copper: #e8a87c;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Syne", "Manrope", ui-sans-serif, sans-serif;
+  --shadow-panel: 0 0 0 1px rgb(255 255 255 / 0.08), 0 18px 40px rgb(0 0 0 / 0.45);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    min-height: 100%;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+input[type="range"].holo-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-fg) 14%, transparent);
+  outline: none;
+}
+
+input[type="range"].holo-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-bg);
+}
+
+input[type="range"].holo-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
+.holo-scan {
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgb(0 0 0 / 0.28) 2px, rgb(0 0 0 / 0.28) 3px);
+}
+
+.login-aura {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, color-mix(in oklab, var(--color-holo) 18%, transparent), transparent 60%),
+    conic-gradient(from 220deg at 50% 40%, color-mix(in oklab, var(--color-holo) 12%, transparent), transparent 30%, color-mix(in oklab, var(--color-copper) 12%, transparent), transparent 70%, color-mix(in oklab, var(--color-accent) 8%, transparent));
+}
