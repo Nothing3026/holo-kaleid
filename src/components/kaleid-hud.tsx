@@ -19,7 +19,7 @@ import {
   SEGMENT_MAX,
   SEGMENT_MIN,
 } from "@/lib/kaleid/types";
-import { useKaleidStore } from "@/lib/kaleid/store";
+import { MEDITATE_MINS, useKaleidStore } from "@/lib/kaleid/store";
 import { cn } from "@/lib/utils";
 
 export function KaleidHud() {
@@ -31,6 +31,8 @@ export function KaleidHud() {
   const frozen = useKaleidStore((s) => s.frozen);
   const meditate = useKaleidStore((s) => s.meditate);
   const setMeditate = useKaleidStore((s) => s.setMeditate);
+  const meditateMins = useKaleidStore((s) => s.meditateMins);
+  const setMeditateMins = useKaleidStore((s) => s.setMeditateMins);
   const hudOpen = useKaleidStore((s) => s.hudOpen);
   const setSegments = useKaleidStore((s) => s.setSegments);
   const setMode = useKaleidStore((s) => s.setMode);
@@ -69,8 +71,36 @@ export function KaleidHud() {
 
   const exitMeditation = () => {
     setMeditate(false);
-    if (playing) void getAmbient().stop();
+    const ambient = getAmbient();
+    // Undo any timer fade so the next session starts at full volume.
+    ambient.setVolume(useKaleidStore.getState().volume);
+    if (playing) void ambient.stop();
   };
+
+  const [remain, setRemain] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!meditate || meditateMins <= 0) {
+      setRemain(null);
+      return;
+    }
+    const deadline = Date.now() + meditateMins * 60_000;
+    const update = () =>
+      setRemain(Math.max(0, (deadline - Date.now()) / 1000));
+    update();
+    const id = window.setInterval(update, 500);
+    return () => window.clearInterval(id);
+  }, [meditate, meditateMins]);
+
+  useEffect(() => {
+    if (remain === null) return;
+    if (remain <= 60) {
+      // Final minute: fade the music out with the remaining time.
+      getAmbient().setVolume(volume * Math.max(0, remain / 60));
+    }
+    if (remain <= 0) exitMeditation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remain]);
 
   useEffect(() => {
     if (volume > 0.01) lastAudible.current = volume;
@@ -173,6 +203,14 @@ export function KaleidHud() {
         </header>
       )}
 
+      {meditate && remain !== null && remain <= 60 && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[1] bg-black"
+          style={{ opacity: Math.min(1, Math.max(0, 1 - remain / 60)) }}
+          aria-hidden
+        />
+      )}
+
       <div
         className={cn(
           "pointer-events-none mx-auto mb-3 max-w-sm text-center text-sm text-fg/80 transition-opacity duration-500",
@@ -182,7 +220,7 @@ export function KaleidHud() {
         ポインターを動かして描く
       </div>
 
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="relative z-[2] mx-auto w-full max-w-2xl">
         <div
           className={cn(
             "grid transition-[grid-template-rows] duration-300 ease-out",
@@ -288,6 +326,30 @@ export function KaleidHud() {
                 </label>
               </div>
 
+              <div className="mt-3 flex items-center gap-3">
+                <span className="shrink-0 text-xs font-medium text-muted">
+                  瞑想タイマー
+                </span>
+                <div className="flex gap-1">
+                  {MEDITATE_MINS.map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setMeditateMins(mins)}
+                      aria-pressed={meditateMins === mins}
+                      className={cn(
+                        "h-9 shrink-0 rounded-md px-2.5 text-xs font-medium transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.96]",
+                        meditateMins === mins
+                          ? "bg-accent text-accent-fg"
+                          : "bg-surface-2 text-muted hover:text-fg",
+                      )}
+                    >
+                      {mins === 0 ? "なし" : `${mins}分`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-3 flex gap-1 overflow-x-auto pb-1">
                 {COLOR_MODES.map((m) => {
                   const active = m.id === mode;
@@ -341,7 +403,11 @@ export function KaleidHud() {
               onClick={exitMeditation}
             >
               <Moon className="size-3.5" strokeWidth={2} aria-hidden />
-              瞑想中（タップで終了）
+              {remain !== null
+                ? `瞑想中 ${Math.floor(remain / 60)}:${String(
+                    Math.floor(remain % 60),
+                  ).padStart(2, "0")}（タップで終了）`
+                : "瞑想中（タップで終了）"}
             </button>
           </div>
         ) : (

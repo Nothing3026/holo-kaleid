@@ -8,6 +8,8 @@ import {
 
 const STORAGE_KEY = "holo-kaleid.settings.v1";
 
+export const MEDITATE_MINS: readonly number[] = [0, 10, 20, 30, 60];
+
 type KaleidState = {
   segments: number;
   mode: ColorMode;
@@ -16,6 +18,7 @@ type KaleidState = {
   volume: number;
   frozen: boolean;
   meditate: boolean;
+  meditateMins: number;
   hudOpen: boolean;
   burstId: number;
   clearId: number;
@@ -31,6 +34,7 @@ type KaleidState = {
   setFrozen: (frozen: boolean) => void;
   setMeditate: (meditate: boolean) => void;
   toggleMeditate: () => void;
+  setMeditateMins: (n: number) => void;
   randomize: () => void;
   requestClear: () => void;
   requestBurst: () => void;
@@ -54,6 +58,9 @@ function load(): Partial<KaleidState> {
         parsed.volume == null || Number.isNaN(Number(parsed.volume))
           ? 0.34
           : clamp01(Number(parsed.volume)),
+      meditateMins: MEDITATE_MINS.includes(Number(parsed.meditateMins))
+        ? Number(parsed.meditateMins)
+        : 0,
       hudOpen: parsed.hudOpen !== false,
     };
   } catch {
@@ -77,6 +84,7 @@ function persist(state: KaleidState) {
         persistence: state.persistence,
         brush: state.brush,
         volume: state.volume,
+        meditateMins: state.meditateMins,
         hudOpen: state.hudOpen,
       }),
     );
@@ -93,6 +101,7 @@ export const useKaleidStore = create<KaleidState>((set, get) => ({
   volume: 0.34,
   frozen: false,
   meditate: false,
+  meditateMins: 0,
   hudOpen: true,
   burstId: 0,
   clearId: 0,
@@ -129,6 +138,12 @@ export const useKaleidStore = create<KaleidState>((set, get) => ({
   setFrozen: (frozen) => set({ frozen }),
   setMeditate: (meditate) => set({ meditate }),
   toggleMeditate: () => set({ meditate: !get().meditate }),
+  setMeditateMins: (n) => {
+    set({
+      meditateMins: MEDITATE_MINS.includes(n) ? n : 0,
+    });
+    persist(get());
+  },
   randomize: () => {
     const evenSegs = [6, 8, 10, 12, 14, 16];
     const mode = COLOR_MODES[Math.floor(Math.random() * COLOR_MODES.length)];
