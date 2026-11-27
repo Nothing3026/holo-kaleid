@@ -15,6 +15,7 @@ type KaleidState = {
   brush: number;
   volume: number;
   frozen: boolean;
+  meditate: boolean;
   hudOpen: boolean;
   burstId: number;
   clearId: number;
@@ -28,6 +29,8 @@ type KaleidState = {
   toggleHud: () => void;
   toggleFrozen: () => void;
   setFrozen: (frozen: boolean) => void;
+  setMeditate: (meditate: boolean) => void;
+  toggleMeditate: () => void;
   randomize: () => void;
   requestClear: () => void;
   requestBurst: () => void;
@@ -89,6 +92,7 @@ export const useKaleidStore = create<KaleidState>((set, get) => ({
   brush: 0.55,
   volume: 0.34,
   frozen: false,
+  meditate: false,
   hudOpen: true,
   burstId: 0,
   clearId: 0,
@@ -123,6 +127,8 @@ export const useKaleidStore = create<KaleidState>((set, get) => ({
   },
   toggleFrozen: () => set({ frozen: !get().frozen }),
   setFrozen: (frozen) => set({ frozen }),
+  setMeditate: (meditate) => set({ meditate }),
+  toggleMeditate: () => set({ meditate: !get().meditate }),
   randomize: () => {
     const evenSegs = [6, 8, 10, 12, 14, 16];
     const mode = COLOR_MODES[Math.floor(Math.random() * COLOR_MODES.length)];

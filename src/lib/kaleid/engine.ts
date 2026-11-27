@@ -197,18 +197,25 @@ export class KaleidEngine {
     const raw = (now - this.lastT) / 1000;
     this.lastT = now;
     const dt = Math.min(raw, 0.1);
-    const { frozen } = useKaleidStore.getState();
+    const { frozen, meditate } = useKaleidStore.getState();
 
     if (!frozen) {
-      this.idleT += dt;
+      // Meditation mode runs the whole field at half pace: the auto
+      // orbit, the colour drift and the breathing glow all share idleT,
+      // so slowing idleT slows everything together (~11s breath cycle).
+      const pace = meditate ? 0.5 : 1;
+      this.idleT += dt * pace;
       if (!this.reduced) {
-        this.spin += dt * 0.2;
+        this.spin += dt * 0.2 * pace;
       }
       const idleFor = now - this.lastInput;
-      if (this.usingPointer) {
+      if (this.usingPointer && !meditate) {
         const p = this.toTrail(this.pointer.x, this.pointer.y);
         this.strokeTo(p.x, p.y, dt, true);
-      } else if (!this.reduced && (this.lastInput === 0 || idleFor > 700)) {
+      } else if (
+        !this.reduced &&
+        (meditate || this.lastInput === 0 || idleFor > 700)
+      ) {
         this.stepAuto(dt);
         this.strokeTo(this.auto.x, this.auto.y, dt, false);
       }

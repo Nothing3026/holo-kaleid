@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   ChevronDown,
   Download,
+  Moon,
   Pause,
   Play,
   RotateCcw,
@@ -28,6 +29,8 @@ export function KaleidHud() {
   const brush = useKaleidStore((s) => s.brush);
   const volume = useKaleidStore((s) => s.volume);
   const frozen = useKaleidStore((s) => s.frozen);
+  const meditate = useKaleidStore((s) => s.meditate);
+  const setMeditate = useKaleidStore((s) => s.setMeditate);
   const hudOpen = useKaleidStore((s) => s.hudOpen);
   const setSegments = useKaleidStore((s) => s.setSegments);
   const setMode = useKaleidStore((s) => s.setMode);
@@ -52,6 +55,21 @@ export function KaleidHud() {
     }
     if (volume < 0.01) setVolume(lastAudible.current);
     void ambient.start();
+  };
+
+  const enterMeditation = () => {
+    setMeditate(true);
+    setHudOpen(false);
+    setHint(false);
+    if (!playing) {
+      if (volume < 0.01) setVolume(lastAudible.current);
+      void getAmbient().start();
+    }
+  };
+
+  const exitMeditation = () => {
+    setMeditate(false);
+    if (playing) void getAmbient().stop();
   };
 
   useEffect(() => {
@@ -96,7 +114,8 @@ export function KaleidHud() {
         e.preventDefault();
         toggleHud();
       } else if (e.key === "Escape") {
-        setHudOpen(false);
+        if (meditate) exitMeditation();
+        else setHudOpen(false);
       } else if (e.key === "m" || e.key === "M") {
         setVolume(volume < 0.01 ? lastAudible.current : 0);
       } else if (e.key === "p" || e.key === "P") {
@@ -125,6 +144,8 @@ export function KaleidHud() {
     toggleHud,
     setHudOpen,
     toggleAmbient,
+    meditate,
+    exitMeditation,
     volume,
     playing,
     setVolume,
@@ -138,22 +159,24 @@ export function KaleidHud() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-5">
-      <header className="pointer-events-auto flex items-start justify-between gap-3">
-        <div className="rounded-xl bg-bg/80 px-3 py-2 shadow-panel">
-          <p className="font-display text-sm font-semibold tracking-tight text-fg">
-            Holo Kaleid
-          </p>
-          <p className="text-xs text-muted">ホログラム万華鏡</p>
-        </div>
-        <div className="rounded-xl bg-bg/80 px-2 py-1 shadow-panel">
-          <AuthSlot />
-        </div>
-      </header>
+      {!meditate && (
+        <header className="pointer-events-auto flex items-start justify-between gap-3">
+          <div className="rounded-xl bg-bg/80 px-3 py-2 shadow-panel">
+            <p className="font-display text-sm font-semibold tracking-tight text-fg">
+              Holo Kaleid
+            </p>
+            <p className="text-xs text-muted">ホログラム万華鏡</p>
+          </div>
+          <div className="rounded-xl bg-bg/80 px-2 py-1 shadow-panel">
+            <AuthSlot />
+          </div>
+        </header>
+      )}
 
       <div
         className={cn(
           "pointer-events-none mx-auto mb-3 max-w-sm text-center text-sm text-fg/80 transition-opacity duration-500",
-          hint && hudOpen ? "opacity-100" : "opacity-0",
+          hint && hudOpen && !meditate ? "opacity-100" : "opacity-0",
         )}
       >
         ポインターを動かして描く
@@ -309,39 +332,62 @@ export function KaleidHud() {
           </div>
         </div>
 
-        <div className="flex justify-center gap-1.5">
-          <button
-            type="button"
-            className={cn(
-              "pointer-events-auto flex h-11 min-w-24 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-medium shadow-panel transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.96]",
-              playing ? "bg-accent text-accent-fg" : "bg-bg/85 text-fg",
-            )}
-            aria-pressed={playing}
-            aria-label={playing ? "音楽を停止" : "音楽を再生"}
-            onClick={toggleAmbient}
-          >
-            {playing ? (
-              <Pause className="size-3.5" strokeWidth={2} aria-hidden />
-            ) : (
-              <Play className="size-3.5" strokeWidth={2} aria-hidden />
-            )}
-            {playing ? "停止" : "再生"}
-          </button>
-          <button
-            type="button"
-            className="pointer-events-auto flex h-11 min-w-28 items-center justify-center gap-1.5 rounded-xl bg-bg/85 px-4 text-xs font-medium text-fg shadow-panel transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]"
-            aria-expanded={hudOpen}
-            aria-controls="kaleid-controls"
-            onClick={toggleHud}
-          >
-            {hudOpen ? (
-              <ChevronDown className="size-3.5" strokeWidth={2} aria-hidden />
-            ) : (
-              <SlidersHorizontal className="size-3.5" strokeWidth={2} aria-hidden />
-            )}
-            {hudOpen ? "隠す" : "操作"}
-          </button>
-        </div>
+        {meditate ? (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              className="pointer-events-auto flex h-11 items-center justify-center gap-1.5 rounded-xl bg-bg/60 px-4 text-xs font-medium text-fg opacity-60 shadow-panel transition-opacity duration-300 ease-out hover:opacity-100"
+              aria-label="瞑想モードを終了"
+              onClick={exitMeditation}
+            >
+              <Moon className="size-3.5" strokeWidth={2} aria-hidden />
+              瞑想中（タップで終了）
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-center gap-1.5">
+            <button
+              type="button"
+              className={cn(
+                "pointer-events-auto flex h-11 min-w-24 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-medium shadow-panel transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.96]",
+                playing ? "bg-accent text-accent-fg" : "bg-bg/85 text-fg",
+              )}
+              aria-pressed={playing}
+              aria-label={playing ? "音楽を停止" : "音楽を再生"}
+              onClick={toggleAmbient}
+            >
+              {playing ? (
+                <Pause className="size-3.5" strokeWidth={2} aria-hidden />
+              ) : (
+                <Play className="size-3.5" strokeWidth={2} aria-hidden />
+              )}
+              {playing ? "停止" : "再生"}
+            </button>
+            <button
+              type="button"
+              className="pointer-events-auto flex h-11 min-w-24 items-center justify-center gap-1.5 rounded-xl bg-bg/85 px-4 text-xs font-medium text-fg shadow-panel transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]"
+              aria-label="瞑想モードを開始"
+              onClick={enterMeditation}
+            >
+              <Moon className="size-3.5" strokeWidth={2} aria-hidden />
+              瞑想
+            </button>
+            <button
+              type="button"
+              className="pointer-events-auto flex h-11 min-w-28 items-center justify-center gap-1.5 rounded-xl bg-bg/85 px-4 text-xs font-medium text-fg shadow-panel transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]"
+              aria-expanded={hudOpen}
+              aria-controls="kaleid-controls"
+              onClick={toggleHud}
+            >
+              {hudOpen ? (
+                <ChevronDown className="size-3.5" strokeWidth={2} aria-hidden />
+              ) : (
+                <SlidersHorizontal className="size-3.5" strokeWidth={2} aria-hidden />
+              )}
+              {hudOpen ? "隠す" : "操作"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
